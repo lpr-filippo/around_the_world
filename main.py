@@ -6,7 +6,7 @@ Main script for the "Around the World" project.
 
 Modules:
     import_data: Handles dataset import.
-
+    utils: Provides utility functions
 """
 
 from import_data import *
