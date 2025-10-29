@@ -17,4 +17,4 @@ def import_data(path: str) -> pd.DataFrame:
     Returns:
         pd.DataFrame: A DataFrame containing the world cities data.
     """
-    return pd.read_csv(os.path.join(path, 'worldcitiespop.csv'))
+    return pd.read_csv(os.path.join(path, 'worldcitiespop.csv'), dtype={'Region': str})
