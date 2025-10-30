@@ -8,6 +8,13 @@ class Distance:
         self.latitude = current["Latitude"]
         self.longitude = current["Longitude"]
 
+        # Ensure latitude and longitude are always floats.
+        # If passed a single-row Series (from a DataFrame), take the first element.
+        self.latitude = float(current["Latitude"].iloc[0]) if isinstance(current["Latitude"], pd.Series) else (
+            float(current["Latitude"]))
+        self.longitude = float(current["Longitude"].iloc[0]) if isinstance(current["Longitude"], pd.Series) else (
+            float(current["Longitude"]))
+
     @staticmethod
     def delta_radians(start: float, end: float) -> float:
         """Convert the angular difference between two coordinates from degrees to radians.
@@ -84,13 +91,12 @@ def calculate_neighbors(current, data, delta: float) -> pd.DataFrame:
             the specified angular constraints.
         """
     dist = Distance(current)
-    start_long = dist.longitude.iloc[0]
-    start_lat = dist.latitude.iloc[0]
+    start_long = dist.longitude
+    start_lat = dist.latitude
 
     delta_long = (data["Longitude"] - start_long + 180) % 360 - 180
 
     mask = (
-            (delta_long > 0) &
             (abs(delta_long) <= delta) &
             (data["Latitude"] >= (start_lat - delta)) &
             (data["Latitude"] <= (start_lat + delta))
@@ -98,4 +104,9 @@ def calculate_neighbors(current, data, delta: float) -> pd.DataFrame:
 
     neighbors = data.loc[mask].copy()
 
-    return neighbors
+    neighbors["Distance_km"] = neighbors.apply(
+        lambda row: dist.distance_to(Distance({"Latitude": row["Latitude"], "Longitude": row["Longitude"]})),
+        axis=1)
+
+    # exclude rows where distance is zero
+    return neighbors[neighbors["Distance_km"] != 0].copy()
