@@ -1,4 +1,5 @@
 from math import radians, asin, sin, cos, sqrt
+import pandas as pd
 
 class Distance:
     R = 6371.0  # Earth's arithmetic mean radius
@@ -65,3 +66,36 @@ class Distance:
         return self.R * c
 
 
+def calculate_neighbors(current, data, delta: float) -> pd.DataFrame:
+    """Identify neighboring cities located eastward within a specified angular range.
+
+        This function selects all cities from the `data` DataFrame whose longitude lies
+        within `delta` degrees east of the reference city's longitude and whose latitude
+        lies within ±`delta` degrees of the reference city's latitude.
+
+        Args:
+            current (pd.DataFrame): A single-row DataFrame containing the reference city's
+                coordinates, with columns "Latitude" and "Longitude".
+            data (pd.DataFrame): The full dataset of cities, containing the same columns.
+            delta (float): The angular threshold (in degrees) for both longitude and latitude.
+
+        Returns:
+            pd.DataFrame: A subset of `data` containing the neighboring cities that satisfy
+            the specified angular constraints.
+        """
+    dist = Distance(current)
+    start_long = dist.longitude.iloc[0]
+    start_lat = dist.latitude.iloc[0]
+
+    delta_long = (data["Longitude"] - start_long + 180) % 360 - 180
+
+    mask = (
+            (delta_long > 0) &
+            (abs(delta_long) <= delta) &
+            (data["Latitude"] >= (start_lat - delta)) &
+            (data["Latitude"] <= (start_lat + delta))
+    )
+
+    neighbors = data.loc[mask].copy()
+
+    return neighbors
