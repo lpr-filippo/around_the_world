@@ -110,3 +110,25 @@ def calculate_neighbors(current, data, delta: float) -> pd.DataFrame:
 
     # exclude rows where distance is zero
     return neighbors[neighbors["Distance_km"] != 0].copy()
+
+def get_top3(df: pd.DataFrame, n: int = 3, sort_by: str = "Distance_km") -> pd.DataFrame:
+    """Return up to `n` nearest cities sorted by `sort_by` (default: 'Distance_km').
+
+    If fewer than `n` cities are available, return all of them.
+    Prints a message if the DataFrame is empty.
+
+    Args:
+        df (pd.DataFrame): DataFrame of cities with a distance column.
+        n (int, optional): Max number of cities to return. Defaults to 3.
+        sort_by (str, optional): Column used for sorting. Defaults to 'Distance_km'.
+
+    Returns:
+        pd.DataFrame: Subset of up to `n` closest cities.
+    """
+    if df.empty:
+        print("No cities found.")
+        return df
+
+    # takes the minimum between integer 'n' and length of 'df'
+    # it manages the case when we have less than 3 cities near our current one
+    return df.nsmallest(min(len(df),n), sort_by)
