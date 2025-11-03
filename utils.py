@@ -131,4 +131,5 @@ def get_top3(df: pd.DataFrame, n: int = 3, sort_by: str = "Distance_km") -> pd.D
 
     # takes the minimum between integer 'n' and length of 'df'
     # it manages the case when we have less than 3 cities near our current one
-    return df.nsmallest(min(len(df),n), sort_by)
+    nearest = df.nsmallest(min(len(df),n), sort_by)
+    return nearest.reset_index(drop=True)
