@@ -133,3 +133,22 @@ def get_top3(df: pd.DataFrame, n: int = 3, sort_by: str = "Distance_km") -> pd.D
     # it manages the case when we have less than 3 cities near our current one
     nearest = df.nsmallest(min(len(df),n), sort_by)
     return nearest.reset_index(drop=True)
+
+
+def calculate_time(row: pd.Series, country: str) -> int:
+    """Compute travel time for a city based on its distance from current point and other properties.
+
+    Args:
+        row (pd.Series): A row from the DataFrame.
+        country (str): The reference country.
+
+    Returns:
+        int: The computed travel time.
+    """
+    index = row.name
+    t = 2 ** (index + 1)
+    if row["Country"] != country:
+        t += 2
+    if row["Population"] > 200000:
+        t += 2
+    return t
