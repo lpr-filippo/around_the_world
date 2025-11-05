@@ -96,13 +96,18 @@ def calculate_neighbors(current, data, delta: float) -> pd.DataFrame:
 
     delta_long = (data["Longitude"] - start_long + 180) % 360 - 180
 
+    # Compute eastward longitudinal difference (0°–360° range)
+    # It correctly handles the 180° meridian crossing, but requires delta < 180° to avoid including westward points
     mask = (
-            (abs(delta_long) <= delta) &
+            (((delta_long + 360) % 360) <= delta) &
+            (((delta_long + 360) % 360) > 0) &
             (data["Latitude"] >= (start_lat - delta)) &
             (data["Latitude"] <= (start_lat + delta))
     )
 
     neighbors = data.loc[mask].copy()
+
+    neighbors["Dist_long"] = abs(delta_long[mask])
 
     neighbors["Distance_km"] = neighbors.apply(
         lambda row: dist.distance_to(Distance({"Latitude": row["Latitude"], "Longitude": row["Longitude"]})),
