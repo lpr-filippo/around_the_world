@@ -73,7 +73,7 @@ class Distance:
         return self.R * c
 
 
-def calculate_neighbors(current, data, delta: float) -> pd.DataFrame:
+def calculate_neighbors(current, data, delta: float = 1, delta_max: float = 90, verbose: bool = False) -> pd.DataFrame:
     """Identify neighboring cities located eastward within a specified angular range.
 
         This function selects all cities from the `data` DataFrame whose longitude lies
@@ -85,6 +85,9 @@ def calculate_neighbors(current, data, delta: float) -> pd.DataFrame:
                 coordinates, with columns "Latitude" and "Longitude".
             data (pd.DataFrame): The full dataset of cities, containing the same columns.
             delta (float): The angular threshold (in degrees) for both longitude and latitude.
+            delta (float, optional): Initial angular threshold (degrees) for both longitude and latitude. Defaults to 1.
+            delta_max (float, optional): Maximum threshold (degrees). Defaults to 90.
+            verbose (bool, optional): If True, print each expansion step.
 
         Returns:
             pd.DataFrame: A subset of `data` containing the neighboring cities that satisfy
@@ -93,28 +96,43 @@ def calculate_neighbors(current, data, delta: float) -> pd.DataFrame:
     dist = Distance(current)
     start_long = dist.longitude
     start_lat = dist.latitude
-
     delta_long = (data["Longitude"] - start_long + 180) % 360 - 180
 
-    # Compute eastward longitudinal difference (0°–360° range)
-    # It correctly handles the 180° meridian crossing, but requires delta < 180° to avoid including westward points
-    mask = (
-            (((delta_long + 360) % 360) <= delta) &
-            (((delta_long + 360) % 360) > 0) &
-            (data["Latitude"] >= (start_lat - delta)) &
-            (data["Latitude"] <= (start_lat + delta))
-    )
+    while delta <= delta_max:
 
-    neighbors = data.loc[mask].copy()
+        # Compute eastward longitudinal difference (0°–360° range)
+        # It correctly handles the 180° meridian crossing, but requires delta < 180° to avoid including westward points
+        mask = (
+                (delta_long <= delta) &
+                (delta_long > 0) &
+                (data["Latitude"] >= (start_lat - delta)) &
+                (data["Latitude"] <= (start_lat + delta))
+        )
 
-    neighbors["Dist_long"] = abs(delta_long[mask])
+        neighbors = data.loc[mask].copy()
 
-    neighbors["Distance_km"] = neighbors.apply(
-        lambda row: dist.distance_to(Distance({"Latitude": row["Latitude"], "Longitude": row["Longitude"]})),
-        axis=1)
+        if not neighbors.empty:
+            neighbors["Dist_long"] = abs(delta_long[mask])
 
-    # exclude rows where distance is zero
-    return neighbors[neighbors["Distance_km"] != 0].copy()
+            neighbors["Distance_km"] = neighbors.apply(
+                lambda row: dist.distance_to(Distance({"Latitude": row["Latitude"], "Longitude": row["Longitude"]})),
+                axis=1)
+
+            # exclude rows where distance is zero
+            neighbors = neighbors[neighbors["Distance_km"] != 0].copy()
+
+            # stop expanding if we have 3 or more neighbors
+            if len(neighbors) >= 3 or delta == delta_max:
+                return neighbors
+
+        # expand the search area
+        delta *= 2
+        if verbose:
+            print(f"Expanded radius, now = {delta}")
+
+    # if no cities found even at max_delta
+    print("No neighboring cities found within the maximum search range.")
+    return pd.DataFrame()
 
 def get_top3(df: pd.DataFrame, n: int = 3, sort_by: str = "Distance_km") -> pd.DataFrame:
     """Return up to `n` nearest cities sorted by `sort_by` (default: 'Distance_km').
@@ -128,7 +146,7 @@ def get_top3(df: pd.DataFrame, n: int = 3, sort_by: str = "Distance_km") -> pd.D
         sort_by (str, optional): Column used for sorting. Defaults to 'Distance_km'.
 
     Returns:
-        pd.DataFrame: Subset of up to `n` closest cities.
+        pd.DataFrame: Subset of up to `n` nearest cities.
     """
     if df.empty:
         print("No cities found.")
@@ -150,7 +168,7 @@ def calculate_time(row: pd.Series, country: str) -> int:
     Returns:
         int: The computed travel time.
     """
-    index = row.name
+    index = int(str(row.name))
     t = 2 ** (index + 1)
     if row["Country"] != country:
         t += 2
