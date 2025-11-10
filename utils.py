@@ -275,12 +275,26 @@ def fastest_long(df: pd.DataFrame) -> pd.Series:
     df["Speed"] = df["Dist_long"] / df["Time"]
     return df.loc[df["Speed"].idxmax()]
 
+def closest_to_home(df: pd.DataFrame) -> pd.Series:
+    """
+    Return the city closest to the home city based on 'Dist_from_home'.
+
+    Args:
+        df (pd.DataFrame): Inherited from `create_move`
+
+    Returns:
+        pd.Series: The row corresponding to the city with the minimum distance to the home city.
+    """
+    df = df.copy()  # to avoid warnings
+    return df.loc[df["Dist_from_home"].idxmin()]
+
 def go_home(df: pd.DataFrame, start_city: str) -> pd.Series:
     """
         Select the next city when returning toward the starting point.
 
         If the starting city (e.g., London) is among the nearby cities, it is immediately chosen.
-        Otherwise, it falls back to the `fastest_long` rule to continue moving efficiently eastward.
+        Otherwise, the function selects the city closest to the home city based on `Dist_from_home`,
+        ensuring movement stays directed toward the destination.
 
         Args:
             df (pd.DataFrame): Inherited from `create_move`
@@ -293,4 +307,4 @@ def go_home(df: pd.DataFrame, start_city: str) -> pd.Series:
     if start_city in df["City"].values:
         df["Speed"] = df["Dist_long"] / df["Time"]
         return df[df["City"] == start_city].iloc[0, :] # to get a pd.Series and not a pd.DataFame
-    return fastest_long(df)
+    return closest_to_home(df)
