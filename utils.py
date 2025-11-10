@@ -135,7 +135,7 @@ def calculate_neighbors(current, data: pd.DataFrame, delta: float = 1, delta_max
     return pd.DataFrame()
 
 
-def calc_neighbors_home(current: pd.DataFrame, data: pd.DataFrame, home: pd.DataFrame, delta: float = 1,
+def calc_neighbors_home(current: pd.DataFrame, data: pd.DataFrame, home: pd.DataFrame, old: pd.DataFrame, delta: float = 1,
     delta_max: float = 90, verbose: bool = False) -> pd.DataFrame:
     """
     Identify neighboring cities when approaching the home city.
@@ -149,6 +149,7 @@ def calc_neighbors_home(current: pd.DataFrame, data: pd.DataFrame, home: pd.Data
                 coordinates, with columns "Latitude" and "Longitude".
         data (pd.DataFrame): The full dataset of cities, containing the same columns.
         home (pd.DataFrame): Single-row DataFrame representing the home city.
+        old (pd.DataFrame): Single-row DataFrame representing the city visited before current.
         delta (float, optional): Initial angular threshold (degrees) for latitude. Defaults to 1.
         delta_max (float, optional): Maximum threshold (degrees). Defaults to 90.
         verbose (bool, optional): If True, print each expansion step.
@@ -192,9 +193,11 @@ def calc_neighbors_home(current: pd.DataFrame, data: pd.DataFrame, home: pd.Data
             )
 
             neighbors = neighbors[neighbors["Distance_km"] != 0].copy()
+            if not old.empty and "Dist_from_home" in old.columns:
+                neighbors = neighbors[neighbors["Dist_from_home"] < old["Dist_from_home"].iloc[0]].copy()
 
-            if len(neighbors) >= 3 or delta == delta_max:
-                return neighbors
+        if not neighbors.empty:
+            return neighbors
 
         delta *= 2
         if verbose:
@@ -286,6 +289,7 @@ def closest_to_home(df: pd.DataFrame) -> pd.Series:
         pd.Series: The row corresponding to the city with the minimum distance to the home city.
     """
     df = df.copy()  # to avoid warnings
+    df["Speed"] = df["Dist_long"] / df["Time"]
     return df.loc[df["Dist_from_home"].idxmin()]
 
 def go_home(df: pd.DataFrame, start_city: str) -> pd.Series:
