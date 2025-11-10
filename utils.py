@@ -74,7 +74,7 @@ class Distance:
         return self.R * c
 
 
-def calculate_neighbors(current, data, delta: float = 1, delta_max: float = 90, verbose: bool = False) -> pd.DataFrame:
+def calculate_neighbors(current, data: pd.DataFrame, delta: float = 1, delta_max: float = 90, verbose: bool = False) -> pd.DataFrame:
     """Identify neighboring cities located eastward within a specified angular range.
 
         This function selects all cities from the `data` DataFrame whose longitude lies
@@ -85,7 +85,6 @@ def calculate_neighbors(current, data, delta: float = 1, delta_max: float = 90, 
             current (pd.DataFrame): A single-row DataFrame containing the reference city's
                 coordinates, with columns "Latitude" and "Longitude".
             data (pd.DataFrame): The full dataset of cities, containing the same columns.
-            delta (float): The angular threshold (in degrees) for both longitude and latitude.
             delta (float, optional): Initial angular threshold (degrees) for both longitude and latitude. Defaults to 1.
             delta_max (float, optional): Maximum threshold (degrees). Defaults to 90.
             verbose (bool, optional): If True, print each expansion step.
@@ -129,10 +128,79 @@ def calculate_neighbors(current, data, delta: float = 1, delta_max: float = 90, 
         # expand the search area
         delta *= 2
         if verbose:
-            print(f"Expanded radius, now = {delta}")
+            print(f"No nearby cities found within ±{delta / 2}°, expanding to ±{delta}°")
 
     # if no cities found even at max_delta
     print("No neighboring cities found within the maximum search range.")
+    return pd.DataFrame()
+
+
+def calc_neighbors_home(current: pd.DataFrame, data: pd.DataFrame, home: pd.DataFrame, delta: float = 1,
+    delta_max: float = 90, verbose: bool = False) -> pd.DataFrame:
+    """
+    Identify neighboring cities when approaching the home city.
+
+    This function finds nearby cities west of the home longitude (within [home_long - 10, home_long]),
+    expanding the latitude search range progressively until at least 3 neighbors are found or delta
+    exceeds delta_max.
+
+    Args:
+        current (pd.DataFrame): A single-row DataFrame containing the reference city's
+                coordinates, with columns "Latitude" and "Longitude".
+        data (pd.DataFrame): The full dataset of cities, containing the same columns.
+        home (pd.DataFrame): Single-row DataFrame representing the home city.
+        delta (float, optional): Initial angular threshold (degrees) for latitude. Defaults to 1.
+        delta_max (float, optional): Maximum threshold (degrees). Defaults to 90.
+        verbose (bool, optional): If True, print each expansion step.
+
+    Returns:
+            pd.DataFrame: A subset of `data` containing the neighboring cities that satisfy
+            the specified angular constraints.
+    """
+    dist = Distance(current)
+    home_dist = Distance(home)
+
+    start_long = dist.longitude
+    start_lat = dist.latitude
+    home_long = home_dist.longitude
+    delta_long = (data["Longitude"] - start_long + 180) % 360 - 180
+
+    while delta <= delta_max:
+
+        mask = (
+                (data["Longitude"] >= home_long - 10) &
+                (data["Longitude"] <= home_long) &
+                (data["Latitude"] >= (start_lat - delta)) &
+                (data["Latitude"] <= (start_lat + delta))
+        )
+
+        neighbors = data.loc[mask].copy()
+
+        if not neighbors.empty:
+            neighbors["Dist_long"] = abs(delta_long[mask])
+
+            neighbors["Distance_km"] = neighbors.apply(
+                lambda row: dist.distance_to(
+                    Distance({"Latitude": row["Latitude"], "Longitude": row["Longitude"]})
+                ), axis=1
+            )
+
+            neighbors["Dist_from_home"] = neighbors.apply(
+                lambda row: home_dist.distance_to(
+                    Distance({"Latitude": row["Latitude"], "Longitude": row["Longitude"]})
+                ), axis=1
+            )
+
+            neighbors = neighbors[neighbors["Distance_km"] != 0].copy()
+
+            if len(neighbors) >= 3 or delta == delta_max:
+                return neighbors
+
+        delta *= 2
+        if verbose:
+            print(f"No nearby cities found within ±{delta / 2}°, expanding to ±{delta}°")
+
+    print("No cities found even at maximum search range.")
     return pd.DataFrame()
 
 
