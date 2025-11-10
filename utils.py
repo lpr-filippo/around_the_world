@@ -1,4 +1,5 @@
 from math import radians, asin, sin, cos, sqrt
+from collections.abc import Callable
 import pandas as pd
 
 class Distance:
@@ -134,6 +135,7 @@ def calculate_neighbors(current, data, delta: float = 1, delta_max: float = 90, 
     print("No neighboring cities found within the maximum search range.")
     return pd.DataFrame()
 
+
 def get_top3(df: pd.DataFrame, n: int = 3, sort_by: str = "Distance_km") -> pd.DataFrame:
     """Return up to `n` nearest cities sorted by `sort_by` (default: 'Distance_km').
 
@@ -175,3 +177,52 @@ def calculate_time(row: pd.Series, country: str) -> int:
     if row["Population"] > 200000:
         t += 2
     return t
+
+
+def create_move(df: pd.DataFrame, method: Callable[[pd.DataFrame], pd.Series]) -> pd.Series:
+    """
+    Apply a given selection strategy to choose the next city.
+
+    Args:
+        df (pd.DataFrame): DataFrame containing nearby cities and travel metrics (e.g. distances, times).
+        method (Callable[[pd.DataFrame], pd.Series]):
+            Function defining how to select the next city, such as `fastest_long` or a custom rule.
+
+    Returns:
+        pd.Series: The selected city's row, representing the next destination.
+    """
+    return method(df)
+
+def fastest_long(df: pd.DataFrame) -> pd.Series:
+    """
+    Select the city with the highest longitudinal speed (Dist_long / Time).
+
+    Args:
+        df (pd.DataFrame): Inherited from `create_move`
+
+    Returns:
+        pd.Series: The row corresponding to the city that maximizes Dist_long / Time.
+    """
+    df = df.copy() # to avoid warnings
+    df["Speed"] = df["Dist_long"] / df["Time"]
+    return df.loc[df["Speed"].idxmax()]
+
+def go_home(df: pd.DataFrame, start_city: str) -> pd.Series:
+    """
+        Select the next city when returning toward the starting point.
+
+        If the starting city (e.g., London) is among the nearby cities, it is immediately chosen.
+        Otherwise, it falls back to the `fastest_long` rule to continue moving efficiently eastward.
+
+        Args:
+            df (pd.DataFrame): Inherited from `create_move`
+            start_city (str): Name of the starting city (used to detect when it's reachable).
+
+        Returns:
+            pd.Series: The selected city's row, representing the next move toward home.
+    """
+    df = df.copy() # to avoid warnings
+    if start_city in df["City"].values:
+        df["Speed"] = df["Dist_long"] / df["Time"]
+        return df[df["City"] == start_city].iloc[0, :] # to get a pd.Series and not a pd.DataFame
+    return fastest_long(df)
