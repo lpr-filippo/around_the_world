@@ -2,6 +2,8 @@ from math import radians, asin, sin, cos, sqrt
 from collections.abc import Callable
 import pandas as pd
 
+import ids
+
 class Distance:
     R = 6371.0  # Earth's arithmetic mean radius
 
@@ -74,7 +76,8 @@ class Distance:
         return self.R * c
 
 
-def calculate_neighbors(current, data: pd.DataFrame, delta: float = 1, delta_max: float = 90, verbose: bool = False) -> pd.DataFrame:
+def calculate_neighbors(current: pd.DataFrame, data: pd.DataFrame, trip: pd.DataFrame, delta: float = 1,
+                        delta_max: float = 90, verbose: bool = False) -> pd.DataFrame:
     """Identify neighboring cities located eastward within a specified angular range.
 
         This function selects all cities from the `data` DataFrame whose longitude lies
@@ -85,6 +88,7 @@ def calculate_neighbors(current, data: pd.DataFrame, delta: float = 1, delta_max
             current (pd.DataFrame): A single-row DataFrame containing the reference city's
                 coordinates, with columns "Latitude" and "Longitude".
             data (pd.DataFrame): The full dataset of cities, containing the same columns.
+            trip (pd.DataFrame): The dataset containing visited cities.
             delta (float, optional): Initial angular threshold (degrees) for both longitude and latitude. Defaults to 1.
             delta_max (float, optional): Maximum threshold (degrees). Defaults to 90.
             verbose (bool, optional): If True, print each expansion step.
@@ -120,6 +124,8 @@ def calculate_neighbors(current, data: pd.DataFrame, delta: float = 1, delta_max
 
             # exclude rows where distance is zero
             neighbors = neighbors[neighbors["Distance_km"] != 0].copy()
+            # Exclude already visited cities except home
+            neighbors = neighbors[~neighbors[ids.PLACE].isin(trip[ids.PLACE].iloc[1:])]
 
             # stop expanding if we have 3 or more neighbors
             if len(neighbors) >= 3 or delta == delta_max:
@@ -135,8 +141,8 @@ def calculate_neighbors(current, data: pd.DataFrame, delta: float = 1, delta_max
     return pd.DataFrame()
 
 
-def calc_neighbors_home(current: pd.DataFrame, data: pd.DataFrame, home: pd.DataFrame, old: pd.DataFrame, delta: float = 1,
-    delta_max: float = 90, verbose: bool = False) -> pd.DataFrame:
+def calc_neighbors_home(current: pd.DataFrame, data: pd.DataFrame, home: pd.DataFrame, trip: pd.DataFrame,
+                        delta: float = 1, delta_max: float = 180, verbose: bool = False) -> pd.DataFrame:
     """
     Identify neighboring cities when approaching the home city.
 
@@ -149,9 +155,9 @@ def calc_neighbors_home(current: pd.DataFrame, data: pd.DataFrame, home: pd.Data
                 coordinates, with columns "Latitude" and "Longitude".
         data (pd.DataFrame): The full dataset of cities, containing the same columns.
         home (pd.DataFrame): Single-row DataFrame representing the home city.
-        old (pd.DataFrame): Single-row DataFrame representing the city visited before current.
+        trip (pd.DataFrame): The dataset containing visited cities.
         delta (float, optional): Initial angular threshold (degrees) for latitude. Defaults to 1.
-        delta_max (float, optional): Maximum threshold (degrees). Defaults to 90.
+        delta_max (float, optional): Maximum threshold (degrees). Defaults to 180.
         verbose (bool, optional): If True, print each expansion step.
 
     Returns:
@@ -169,7 +175,7 @@ def calc_neighbors_home(current: pd.DataFrame, data: pd.DataFrame, home: pd.Data
     while delta <= delta_max:
 
         mask = (
-                (data["Longitude"] >= home_long - 10) &
+                (data["Longitude"] >= home_long - ids.DELTA_HOME) &
                 (data["Longitude"] <= home_long) &
                 (data["Latitude"] >= (start_lat - delta)) &
                 (data["Latitude"] <= (start_lat + delta))
@@ -193,8 +199,10 @@ def calc_neighbors_home(current: pd.DataFrame, data: pd.DataFrame, home: pd.Data
             )
 
             neighbors = neighbors[neighbors["Distance_km"] != 0].copy()
-            if not old.empty and "Dist_from_home" in old.columns:
-                neighbors = neighbors[neighbors["Dist_from_home"] < old["Dist_from_home"].iloc[0]].copy()
+            # Exclude already visited cities except home
+            neighbors = neighbors[~neighbors[ids.PLACE].isin(trip[ids.PLACE].iloc[1:])]
+            if not current.empty and "Dist_from_home" in current.columns:
+                neighbors = neighbors[neighbors["Dist_from_home"] < current["Dist_from_home"].iloc[0]].copy()
 
         if not neighbors.empty:
             return neighbors
@@ -308,7 +316,7 @@ def go_home(df: pd.DataFrame, start_city: str) -> pd.Series:
             pd.Series: The selected city's row, representing the next move toward home.
     """
     df = df.copy() # to avoid warnings
-    if start_city in df["City"].values:
+    if start_city in df[ids.PLACE].values:
         df["Speed"] = df["Dist_long"] / df["Time"]
-        return df[df["City"] == start_city].iloc[0, :] # to get a pd.Series and not a pd.DataFame
+        return df[df[ids.PLACE] == start_city].iloc[0, :] # to get a pd.Series and not a pd.DataFame
     return closest_to_home(df)
