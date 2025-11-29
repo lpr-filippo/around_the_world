@@ -10,19 +10,24 @@ Modules:
     ids: Defines variables for easy modification.
     app_render: Code for the web app using Dash.
     map_creator: Functions to generate maps and render them in app_render.
+    stats: Functions to calculate statistics about the data and render them in app_render.
 """
 import pandas as pd
+from dash import Output, Input, callback
 
 from utils import calculate_neighbors, calc_neighbors_home, calculate_time, get_top3, create_move, fastest_long, go_home
 import ids
 # importing the clean dataset with the cities
 from import_data import cities_data
 
-
-def move_atw(data, str_city) -> pd.DataFrame:
+@callback(
+    Output('trip', 'data'),
+    Input('dropdown', 'value')
+)
+def move_atw(str_city: str) -> list[dict]:
 
     # initialization
-    start_point: pd.DataFrame = data[data[ids.PLACE] == str_city]
+    start_point: pd.DataFrame = cities_data[cities_data[ids.PLACE] == str_city]
     index = 0
     current_point = start_point.copy()
 
@@ -34,12 +39,10 @@ def move_atw(data, str_city) -> pd.DataFrame:
 
     while True:
 
-        print(f"Current city: {current_point[ids.PLACE].iloc[0]}")
-
         if (start_point["Longitude"].iloc[0] - ids.DELTA_HOME <= current_point["Longitude"].iloc[0] <= start_point["Longitude"].iloc[0])\
                 and index != 0:
             # Use calc_neighbors_home when is near home
-            neighbors: pd.DataFrame = calc_neighbors_home(current_point, data, start_point, trip, delta=1, verbose=True)
+            neighbors: pd.DataFrame = calc_neighbors_home(current_point, cities_data, start_point, trip, delta=1, verbose=False)
             # Extract three nearest city
             near3 = get_top3(neighbors)
             if near3.shape[0] == 0:
@@ -50,7 +53,7 @@ def move_atw(data, str_city) -> pd.DataFrame:
             next_point = create_move(near3, lambda df: go_home(df, str_city))
         else:
             # Normal eastward travel
-            neighbors: pd.DataFrame = calculate_neighbors(current_point, data, trip, delta=1, verbose=True)
+            neighbors: pd.DataFrame = calculate_neighbors(current_point, cities_data, trip, delta=1, verbose=False)
             # Extract three nearest city
             near3 = get_top3(neighbors)
             # calculate travel time
@@ -75,10 +78,10 @@ def move_atw(data, str_city) -> pd.DataFrame:
             print("Too many iterations, stopping.")
             break
 
-    return trip
+    return trip.to_dict('records')
 
 def main():
-    move_atw(cities_data, 'london')
+    move_atw("London GB")
 
 if __name__ == "__main__":
     main()
