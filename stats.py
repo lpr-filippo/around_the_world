@@ -64,7 +64,7 @@ def stat_render(app: Dash) -> html.Div:
        stats = compute_stats(trip)
        # Format stats as a grid of cards
        return html.Div(
-           className="stats-left-container",
+           className="stats-container",
            children=html.Div(
                className="stats-grid",
                children=[
@@ -81,7 +81,7 @@ def stat_render(app: Dash) -> html.Div:
        id='stats-output',
        className="stats-section",
        children=[html.Div(
-           className="stats-left-container",
+           className="stats-container",
            children=html.Div(
                className="stats-grid",
                children=[

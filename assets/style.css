@@ -1,0 +1,101 @@
+/* Main app wrapper: full viewport, column layout */
+.app-layout {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column; /* Main vertical layout container */
+}
+
+/* Two-column grid: map on the left, stats/lists on the right */
+.grid-class {
+    display: grid;
+    grid-template-columns: 5fr 2fr; /* Map area (left) and side panel (right);
+                                       map 2.5 times bigger than side panel */
+    gap: 2vw; /* Spacing between columns */
+    height: 100vh; /* Full viewport height */
+}
+
+/* Container for title + map, flexible inside the grid */
+.map-container {
+    display: flex;
+    flex-direction: column; /* Keep title and map stacked */
+    flex: 1; /* Allow map to grow */
+    min-height: 0; /* Prevent overflow in grid */
+}
+
+/* Map title styling */
+.title {
+    height: 5%; /* Fixed height of title inside map container */
+    text-align: center;
+    font-weight: 550;
+}
+
+/* Header spacing for the cities section */
+.cities-header {
+    margin: 10px; /* Header spacing for lists */
+}
+
+/* Theme switch positioning */
+.switch {
+    margin: 10px; /* Margin around theme switch */
+}
+
+/* Wrapper for the statistics panel (card-like box) */
+.stats-container {
+    display: flex;
+    justify-content: left;    /* Align stats grid to the left */
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 1px 2px; /* Light shadow for card look */
+    width: 100%;
+    margin-bottom: 20px /* Space below stats block */
+}
+
+/* Grid containing stat-cards */
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr; /* Single-column layout */
+    gap: 20px 40px; /* Vertical and horizontal spacing */
+    width: 100%;
+    max-width: 500px; /* Prevent grid from stretching too wide */
+}
+
+/* Single statistics card */
+.stat-card {
+    padding: 12px 18px;
+    border-radius: 10px;
+    box-shadow: 0 1px 2px;
+}
+
+/* Title in each stat card */
+.stat-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+/* Value in each stat card */
+.stat-value {
+    font-size: 1.2rem;
+    font-weight: 500;
+}
+
+/* Container for UL-based lists */
+.list-container {
+    width: 100%;
+    display: flex;
+    justify-content: left; /* Align UL to the left */
+}
+
+/* List styling */
+.list-ul {
+    width: 100%;
+    padding: 12px 30px;
+    border-radius: 10px;
+    box-shadow: 0 1px 2px; /* Matching shadow with stat cards */
+    list-style: none; /* Remove bullet points */
+    font-weight: 500;
+}
+
+
+
