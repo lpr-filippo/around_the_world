@@ -46,7 +46,7 @@ def move_atw(str_city: str) -> list[dict]:
             # Extract three nearest city
             near3 = get_top3(neighbors)
             if near3.shape[0] == 0:
-                return trip
+                return trip.to_dict('records')
             # calculate travel time
             near3["Time"] = near3.apply(lambda row: calculate_time(row, current_point["Country"].iloc[0]), axis=1)
             # Select next city prioritizing movement toward home
